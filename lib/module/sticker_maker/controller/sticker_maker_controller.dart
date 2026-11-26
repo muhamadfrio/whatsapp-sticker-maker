@@ -502,17 +502,8 @@ class StickerMakerController extends GetxController {
       // 4. Create Tray Icon PNG (96x96 pixels, < 50 KB, PNG format required by WhatsApp)
       final img.Image trayImage =
           img.copyResize(sticker512, width: 96, height: 96);
-      final Uint8List rawTrayBytes =
-          Uint8List.fromList(img.encodePng(trayImage, level: 9));
-
       final Uint8List trayPngBytes =
-          await FlutterImageCompress.compressWithList(
-        rawTrayBytes,
-        format: CompressFormat.png,
-        quality: 80,
-        minWidth: 96,
-        minHeight: 96,
-      );
+          Uint8List.fromList(img.encodePng(trayImage, level: 9));
 
       debugPrint(
         'Tray Icon PNG: ${trayImage.width}x${trayImage.height}, size: ${trayPngBytes.lengthInBytes} bytes',
@@ -534,6 +525,16 @@ class StickerMakerController extends GetxController {
         throw Exception('Gagal mendapatkan direktori file aplikasi.');
       }
 
+      // Delete all existing subfolders in '$filesDirPath/sticker_packs' so provider only returns one pack
+      final stickerPacksParentDir = Directory('$filesDirPath/sticker_packs');
+      if (await stickerPacksParentDir.exists()) {
+        await for (final entity in stickerPacksParentDir.list()) {
+          if (entity is Directory) {
+            await entity.delete(recursive: true);
+          }
+        }
+      }
+
       // Generate unique clean packId to bypass WhatsApp error cache
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final packId = 'pack_$timestamp';
@@ -548,7 +549,7 @@ class StickerMakerController extends GetxController {
       // Write config.txt (Line 1: pack name, Line 2: author, Line 3: animated, Line 4: version)
       final configFile = File('${packDir.path}/config.txt');
       await configFile.writeAsString(
-        '$packName\nRio Sticker Maker\n0\n$timestamp',
+        '$packName\nRio Sticker Maker\n0\n1',
       );
 
       // Write tray.png

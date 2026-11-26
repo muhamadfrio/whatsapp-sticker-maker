@@ -2,7 +2,6 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="com.whatsapp.sticker.READ" />
 
     <application
         android:label="whatsappstickermaker"
@@ -43,6 +42,7 @@
             android:authorities="${applicationId}.stickercontentprovider"
             android:enabled="true"
             android:exported="true"
+            android:readPermission="com.whatsapp.sticker.READ"
             android:grantUriPermissions="true" />
     </application>
     <!-- Required to query activities that can process text, see:

@@ -135,7 +135,12 @@ class StickerContentProvider : ContentProvider() {
         val name = lines.getOrNull(0) ?: packDir.name
         val author = lines.getOrNull(1) ?: "Rio Sticker Maker"
         val isAnimated = lines.getOrNull(2) == "1"
-        val version = lines.getOrNull(3) ?: "1"
+        val rawVersion = lines.getOrNull(3) ?: "1"
+        val version = try {
+            rawVersion.toInt().toString()
+        } catch (e: Exception) {
+            "1"
+        }
 
         Log.i(TAG, "addPackRow: packId=${packDir.name}, name=$name, version=$version")
 
@@ -177,7 +182,7 @@ class StickerContentProvider : ContentProvider() {
 
         stickerFiles?.forEach { file ->
             Log.i(TAG, "Sticker file found: ${file.name}, size=${file.length()} bytes")
-            cursor.addRow(arrayOf(file.name, "\uD83D\uDE00", ""))
+            cursor.addRow(arrayOf(file.name, "😀", ""))
         }
 
         Log.i(TAG, "getStickersCursor for $packId returning ${cursor.count} stickers")
@@ -213,8 +218,8 @@ class StickerContentProvider : ContentProvider() {
             return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
         } else {
             Log.e(TAG, "openFile error: File not found for $uri")
+            throw java.io.FileNotFoundException("Sticker file not found for $uri")
         }
-        return super.openFile(uri, mode)
     }
 
     override fun openAssetFile(uri: Uri, mode: String): AssetFileDescriptor? {
@@ -224,11 +229,11 @@ class StickerContentProvider : ContentProvider() {
             file.setReadable(true, false)
             val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             Log.i(TAG, "openAssetFile success: ${file.absolutePath}, size=${file.length()} bytes")
-            return AssetFileDescriptor(pfd, 0, file.length())
+            return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
         } else {
             Log.e(TAG, "openAssetFile error: File not found for $uri")
+            throw java.io.FileNotFoundException("Sticker asset file not found for $uri")
         }
-        return super.openAssetFile(uri, mode)
     }
 
     override fun getType(uri: Uri): String {
@@ -244,7 +249,8 @@ class StickerContentProvider : ContentProvider() {
             }
         }
         return when (uriMatcher.match(uri)) {
-            METADATA, METADATA_CODE -> "vnd.android.cursor.dir/vnd.$AUTHORITY.metadata"
+            METADATA -> "vnd.android.cursor.dir/vnd.$AUTHORITY.metadata"
+            METADATA_CODE -> "vnd.android.cursor.item/vnd.$AUTHORITY.metadata"
             STICKERS -> "vnd.android.cursor.dir/vnd.$AUTHORITY.stickers"
             else -> "application/octet-stream"
         }
