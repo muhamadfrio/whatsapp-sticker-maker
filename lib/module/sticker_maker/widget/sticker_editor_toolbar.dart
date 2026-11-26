@@ -33,33 +33,46 @@ class StickerEditorToolbar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // 1. Tool Selection Chips
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildToolChip(
-                  icon: Icons.cleaning_services_outlined,
-                  label: 'Eraser',
-                  isActive: activeTool == StickerToolMode.erase,
-                  onTap: () => controller.selectTool(StickerToolMode.erase),
-                ),
-                _buildToolChip(
-                  icon: Icons.restore_outlined,
-                  label: 'Restore',
-                  isActive: activeTool == StickerToolMode.restore,
-                  onTap: () => controller.selectTool(StickerToolMode.restore),
-                ),
-                _buildToolChip(
-                  icon: Icons.text_fields_outlined,
-                  label: 'Teks',
-                  isActive: activeTool == StickerToolMode.text,
-                  onTap: () => controller.selectTool(StickerToolMode.text),
-                ),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildToolChip(
+                    icon: Icons.auto_fix_high,
+                    label: 'Hapus BG',
+                    isActive: activeTool == StickerToolMode.background,
+                    onTap: () => controller.selectTool(StickerToolMode.background),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildToolChip(
+                    icon: Icons.cleaning_services_outlined,
+                    label: 'Eraser',
+                    isActive: activeTool == StickerToolMode.erase,
+                    onTap: () => controller.selectTool(StickerToolMode.erase),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildToolChip(
+                    icon: Icons.restore_outlined,
+                    label: 'Restore',
+                    isActive: activeTool == StickerToolMode.restore,
+                    onTap: () => controller.selectTool(StickerToolMode.restore),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildToolChip(
+                    icon: Icons.text_fields_outlined,
+                    label: 'Teks',
+                    isActive: activeTool == StickerToolMode.text,
+                    onTap: () => controller.selectTool(StickerToolMode.text),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 12),
 
             // 2. Active Tool Controls
+            if (activeTool == StickerToolMode.background)
+              _buildBackgroundControls(context),
             if (activeTool == StickerToolMode.erase || activeTool == StickerToolMode.restore)
               _buildBrushControls(context),
             if (activeTool == StickerToolMode.text)
@@ -90,6 +103,75 @@ class StickerEditorToolbar extends StatelessWidget {
         color: isActive ? Colors.white : Colors.black87,
         fontWeight: FontWeight.bold,
       ),
+    );
+  }
+
+  Widget _buildBackgroundControls(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.auto_fix_high, size: 20, color: Colors.deepPurple),
+                SizedBox(width: 8),
+                Text(
+                  'Hapus Background Auto:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ],
+            ),
+            Obx(
+              () => Switch(
+                value: controller.isBackgroundRemoved.value,
+                activeTrackColor: Colors.deepPurple,
+                onChanged: (val) => controller.toggleBackgroundRemoval(val),
+              ),
+            ),
+          ],
+        ),
+        Obx(() {
+          if (!controller.isBackgroundRemoved.value) {
+            return const SizedBox.shrink();
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Text(
+                    'Sensitivitas Pemotongan:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${(controller.backgroundSensitivity.value * 100).toInt()}%',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                ],
+              ),
+              Slider(
+                value: controller.backgroundSensitivity.value,
+                min: 0.05,
+                max: 0.85,
+                divisions: 16,
+                activeColor: Colors.deepPurple,
+                label:
+                    '${(controller.backgroundSensitivity.value * 100).toInt()}%',
+                onChangeEnd: (val) => controller.setBackgroundSensitivity(val),
+                onChanged: (val) {
+                  controller.backgroundSensitivity.value = val;
+                },
+              ),
+            ],
+          );
+        }),
+      ],
     );
   }
 

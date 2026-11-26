@@ -18,7 +18,8 @@ class StickerCanvasWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final processedBytes = controller.processedImageBytes.value;
-      if (processedBytes == null) {
+      final processedUiImg = controller.processedUiImage.value;
+      if (processedBytes == null || processedUiImg == null) {
         return Container(
           width: 300,
           height: 300,
@@ -42,39 +43,47 @@ class StickerCanvasWidget extends StatelessWidget {
         );
       }
 
-      return Container(
-        width: 320,
-        height: 320,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.deepPurple.shade300, width: 2),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: GestureDetector(
-            onPanStart: (details) {
-              controller.handlePanStart(details.localPosition);
-            },
-            onPanUpdate: (details) {
-              controller.handlePanUpdate(details.localPosition, details.delta);
-            },
-            onPanEnd: (_) {
-              controller.handlePanEnd();
-            },
-            onTapUp: (details) {
-              controller.handleTap(details.localPosition);
-            },
-            child: CustomPaint(
-              size: const Size(320, 320),
-              painter: StickerCanvasPainter(
-                originalImage: controller.originalUiImage.value,
-                processedImage: controller.processedUiImage.value,
-                strokes: controller.strokes.toList(),
-                currentStroke: controller.currentStroke.value,
-                textLayers: controller.textLayers.toList(),
-                selectedTextLayerId: controller.selectedTextLayerId.value,
-                brushSize: controller.brushSize.value,
-                brushMode: controller.brushMode.value,
+      return RepaintBoundary(
+        key: controller.canvasGlobalKey,
+        child: Container(
+          width: 320,
+          height: 320,
+          decoration: controller.isExporting.value
+              ? null
+              : BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.deepPurple.shade300, width: 2),
+                ),
+          child: ClipRRect(
+            borderRadius: controller.isExporting.value
+                ? BorderRadius.zero
+                : BorderRadius.circular(14),
+            child: GestureDetector(
+              onPanStart: (details) {
+                controller.handlePanStart(details.localPosition);
+              },
+              onPanUpdate: (details) {
+                controller.handlePanUpdate(details.localPosition, details.delta);
+              },
+              onPanEnd: (_) {
+                controller.handlePanEnd();
+              },
+              onTapUp: (details) {
+                controller.handleTap(details.localPosition);
+              },
+              child: CustomPaint(
+                size: const Size(320, 320),
+                painter: StickerCanvasPainter(
+                  originalImage: controller.originalUiImage.value,
+                  processedImage: controller.processedUiImage.value,
+                  strokes: controller.strokes.toList(),
+                  currentStroke: controller.currentStroke.value,
+                  textLayers: controller.textLayers.toList(),
+                  selectedTextLayerId: controller.selectedTextLayerId.value,
+                  brushSize: controller.brushSize.value,
+                  brushMode: controller.brushMode.value,
+                  isExporting: controller.isExporting.value,
+                ),
               ),
             ),
           ),
@@ -93,6 +102,7 @@ class StickerCanvasPainter extends CustomPainter {
   final String? selectedTextLayerId;
   final double brushSize;
   final CanvasBrushMode brushMode;
+  final bool isExporting;
 
   StickerCanvasPainter({
     this.originalImage,
@@ -103,14 +113,17 @@ class StickerCanvasPainter extends CustomPainter {
     this.selectedTextLayerId,
     required this.brushSize,
     required this.brushMode,
+    this.isExporting = false,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    // 1. Draw Checkerboard Background
-    _drawCheckerboard(canvas, size);
+    // 1. Draw Checkerboard Background (only if not exporting)
+    if (!isExporting) {
+      _drawCheckerboard(canvas, size);
+    }
 
     if (processedImage == null) return;
 
@@ -151,7 +164,7 @@ class StickerCanvasPainter extends CustomPainter {
 
     // 3. Text Layers
     for (final textLayer in textLayers) {
-      _drawTextLayer(canvas, textLayer, textLayer.id == selectedTextLayerId);
+      _drawTextLayer(canvas, textLayer, !isExporting && textLayer.id == selectedTextLayerId);
     }
   }
 

@@ -33,30 +33,55 @@ class StickerMakerScreen extends GetView<StickerMakerController> {
                       ),
                       const SizedBox(height: 16),
                       Obx(
-                        () => ElevatedButton.icon(
-                          onPressed: () => controller.pickImageAndRemoveBackground(),
-                          icon: Icon(
-                            controller.processedImageBytes.value == null
-                                ? Icons.photo_library
-                                : Icons.published_with_changes,
-                          ),
-                          label: Text(
-                            controller.processedImageBytes.value == null
-                                ? 'Pilih Gambar dari Galeri'
-                                : 'Ganti Gambar',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepPurple,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
+                        () => Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => controller.pickImageAndRemoveBackground(),
+                              icon: Icon(
+                                controller.processedImageBytes.value == null
+                                    ? Icons.photo_library
+                                    : Icons.published_with_changes,
+                              ),
+                              label: Text(
+                                controller.processedImageBytes.value == null
+                                    ? 'Pilih Gambar dari Galeri'
+                                    : 'Ganti Gambar',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                            textStyle: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                            if (controller.processedImageBytes.value != null)
+                              ElevatedButton.icon(
+                                onPressed: () => controller.exportAndSendToWhatsApp(),
+                                icon: const Icon(Icons.send_rounded),
+                                label: const Text('Kirim ke WhatsApp'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green.shade600,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ],
