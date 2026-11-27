@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controller/sticker_maker_controller.dart';
+import '../data/model/brush_stroke.dart';
 
 class StickerEditorToolbar extends StatelessWidget {
   final StickerMakerController controller;
@@ -32,40 +33,59 @@ class StickerEditorToolbar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 1. Tool Selection Chips
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildToolChip(
-                    icon: Icons.auto_fix_high,
-                    label: 'Hapus BG',
-                    isActive: activeTool == StickerToolMode.background,
-                    onTap: () => controller.selectTool(StickerToolMode.background),
+            // 1. Tool Selection Chips + Close Button
+            Row(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildToolChip(
+                          icon: Icons.auto_fix_high,
+                          label: 'Hapus BG',
+                          isActive: activeTool == StickerToolMode.background,
+                          onTap: () => controller.selectTool(StickerToolMode.background),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildToolChip(
+                          icon: Icons.cleaning_services_outlined,
+                          label: 'Eraser',
+                          isActive: activeTool == StickerToolMode.erase,
+                          onTap: () => controller.selectTool(StickerToolMode.erase),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildToolChip(
+                          icon: Icons.restore_outlined,
+                          label: 'Restore',
+                          isActive: activeTool == StickerToolMode.restore,
+                          onTap: () => controller.selectTool(StickerToolMode.restore),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildToolChip(
+                          icon: Icons.text_fields_outlined,
+                          label: 'Teks',
+                          isActive: activeTool == StickerToolMode.text,
+                          onTap: () => controller.selectTool(StickerToolMode.text),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  _buildToolChip(
-                    icon: Icons.cleaning_services_outlined,
-                    label: 'Eraser',
-                    isActive: activeTool == StickerToolMode.erase,
-                    onTap: () => controller.selectTool(StickerToolMode.erase),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildToolChip(
-                    icon: Icons.restore_outlined,
-                    label: 'Restore',
-                    isActive: activeTool == StickerToolMode.restore,
-                    onTap: () => controller.selectTool(StickerToolMode.restore),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildToolChip(
-                    icon: Icons.text_fields_outlined,
-                    label: 'Teks',
-                    isActive: activeTool == StickerToolMode.text,
-                    onTap: () => controller.selectTool(StickerToolMode.text),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () {
+                    controller.activeTool.value = StickerToolMode.none;
+                    controller.brushMode.value = CanvasBrushMode.none;
+                    controller.selectedTextLayerId.value = null;
+                  },
+                  icon: const Icon(Icons.close),
+                  color: Colors.grey.shade700,
+                  tooltip: 'Tutup Toolbar',
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(6),
+                ),
+              ],
             ),
 
             const SizedBox(height: 12),
