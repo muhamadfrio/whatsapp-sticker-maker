@@ -6,6 +6,7 @@ import '../../../common/widgets/safe_area_scaffold.dart';
 import '../controller/sticker_maker_controller.dart';
 import '../widget/sticker_canvas_widget.dart';
 import '../widget/sticker_editor_toolbar.dart';
+import '../widget/sticker_selector_widget.dart';
 
 class StickerMakerScreen extends GetView<StickerMakerController> {
   const StickerMakerScreen({super.key});
@@ -32,14 +33,20 @@ class StickerMakerScreen extends GetView<StickerMakerController> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Obx(
-                        () => Wrap(
+                      Obx(() {
+                        final filledCount = controller.stickers
+                            .where((s) => s.hasImage)
+                            .length;
+                        final hasAnyImage = filledCount > 0;
+
+                        return Wrap(
                           spacing: 12,
                           runSpacing: 12,
                           alignment: WrapAlignment.center,
                           children: [
                             ElevatedButton.icon(
-                              onPressed: () => controller.pickImageAndRemoveBackground(),
+                              onPressed: () =>
+                                  controller.pickImageAndRemoveBackground(),
                               icon: Icon(
                                 controller.processedImageBytes.value == null
                                     ? Icons.photo_library
@@ -47,8 +54,8 @@ class StickerMakerScreen extends GetView<StickerMakerController> {
                               ),
                               label: Text(
                                 controller.processedImageBytes.value == null
-                                    ? 'Pilih Gambar dari Galeri'
-                                    : 'Ganti Gambar',
+                                    ? 'Pilih Gambar (${controller.selectedIndex.value + 1})'
+                                    : 'Ganti Gambar (${controller.selectedIndex.value + 1})',
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.deepPurple,
@@ -63,13 +70,16 @@ class StickerMakerScreen extends GetView<StickerMakerController> {
                                 ),
                               ),
                             ),
-                            if (controller.processedImageBytes.value != null)
+                            if (hasAnyImage)
                               ElevatedButton.icon(
-                                onPressed: () => controller.exportAndSendToWhatsApp(),
+                                onPressed: () =>
+                                    controller.exportAndSendToWhatsApp(),
                                 icon: const Icon(Icons.send_rounded),
-                                label: const Text('Kirim ke WhatsApp'),
+                                label: Text('Kirim ke WhatsApp ($filledCount/3)'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
+                                  backgroundColor: filledCount == 3
+                                      ? Colors.green.shade600
+                                      : Colors.green.shade700.withAlpha(200),
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 20,
@@ -82,8 +92,10 @@ class StickerMakerScreen extends GetView<StickerMakerController> {
                                 ),
                               ),
                           ],
-                        ),
-                      ),
+                        );
+                      }),
+                      const SizedBox(height: 20),
+                      StickerSelectorWidget(controller: controller),
                     ],
                   ),
                 ),

@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get/get.dart';
@@ -11,7 +10,9 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import '../data/model/brush_stroke.dart';
+import '../data/model/sticker_item.dart';
 import '../data/model/text_layer.dart';
+import '../widget/sticker_canvas_widget.dart';
 
 enum StickerToolMode { none, erase, restore, text, background }
 
@@ -29,7 +30,17 @@ class StickerMakerController extends GetxController {
   static const MethodChannel _whatsappChannel =
       MethodChannel('com.rio.whatsappstickermaker/whatsapp');
 
-  // Images
+  // Sticker pack slots state (3 slots required for WhatsApp export)
+  final RxInt selectedIndex = 0.obs;
+  final RxList<StickerItem> stickers = <StickerItem>[
+    StickerItem(),
+    StickerItem(),
+    StickerItem(),
+  ].obs;
+
+  StickerItem get activeSticker => stickers[selectedIndex.value];
+
+  // Images for active slot
   final Rxn<Uint8List> originalImageBytes = Rxn<Uint8List>();
   final Rxn<Uint8List> processedImageBytes = Rxn<Uint8List>();
   final Rxn<ui.Image> originalUiImage = Rxn<ui.Image>();
@@ -37,7 +48,7 @@ class StickerMakerController extends GetxController {
 
   final RxBool isLoading = false.obs;
 
-  // Background Removal State
+  // Background Removal State for active slot
   final RxBool isBackgroundRemoved = false.obs;
   final RxDouble backgroundSensitivity = 0.3.obs; // Threshold: 0.05 to 0.85
   List<double>? _cachedConfidences;
@@ -77,6 +88,64 @@ class StickerMakerController extends GetxController {
     );
   }
 
+  void selectStickerSlot(int index) {
+    if (index < 0 || index >= stickers.length) return;
+    if (selectedIndex.value == index) return;
+
+    _saveCurrentStateToActiveSticker();
+    selectedIndex.value = index;
+    _loadActiveStickerToState();
+  }
+
+  void _saveCurrentStateToActiveSticker() {
+    final item = activeSticker;
+    item.originalImageBytes = originalImageBytes.value;
+    item.processedImageBytes = processedImageBytes.value;
+    item.originalUiImage = originalUiImage.value;
+    item.processedUiImage = processedUiImage.value;
+    item.isBackgroundRemoved = isBackgroundRemoved.value;
+    item.backgroundSensitivity = backgroundSensitivity.value;
+    item.cachedConfidences = _cachedConfidences;
+    item.cachedMaskWidth = _cachedMaskWidth;
+    item.cachedMaskHeight = _cachedMaskHeight;
+    item.currentImagePath = _currentImagePath;
+    item.strokes = List.from(strokes);
+    item.textLayers = List.from(textLayers);
+  }
+
+  void _loadActiveStickerToState() {
+    final item = activeSticker;
+    originalImageBytes.value = item.originalImageBytes;
+    processedImageBytes.value = item.processedImageBytes;
+    originalUiImage.value = item.originalUiImage;
+    processedUiImage.value = item.processedUiImage;
+    isBackgroundRemoved.value = item.isBackgroundRemoved;
+    backgroundSensitivity.value = item.backgroundSensitivity;
+    _cachedConfidences = item.cachedConfidences;
+    _cachedMaskWidth = item.cachedMaskWidth;
+    _cachedMaskHeight = item.cachedMaskHeight;
+    _currentImagePath = item.currentImagePath;
+
+    strokes.assignAll(item.strokes);
+    textLayers.assignAll(item.textLayers);
+
+    selectedTextLayerId.value = null;
+    activeTool.value = StickerToolMode.none;
+    brushMode.value = CanvasBrushMode.none;
+
+    stickers.refresh();
+  }
+
+  void clearStickerSlot(int index) {
+    if (index < 0 || index >= stickers.length) return;
+    stickers[index].reset();
+    if (selectedIndex.value == index) {
+      _loadActiveStickerToState();
+    } else {
+      stickers.refresh();
+    }
+  }
+
   Future<void> pickImageAndRemoveBackground() async {
     try {
       final XFile? pickedFile = await imagePicker.pickImage(
@@ -99,6 +168,9 @@ class StickerMakerController extends GetxController {
       processedUiImage.value = origUiImg;
       isBackgroundRemoved.value = false;
 
+      _saveCurrentStateToActiveSticker();
+      stickers.refresh();
+
       // Asynchronously extract ML Kit mask for optional background removal
       final inputImage = InputImage.fromFilePath(pickedFile.path);
       final mask = await selfieSegmenter.processImage(inputImage);
@@ -107,6 +179,8 @@ class StickerMakerController extends GetxController {
         _cachedConfidences = mask.confidences;
         _cachedMaskWidth = mask.width;
         _cachedMaskHeight = mask.height;
+        _saveCurrentStateToActiveSticker();
+        stickers.refresh();
       }
     } catch (e) {
       Get.snackbar(
@@ -126,6 +200,8 @@ class StickerMakerController extends GetxController {
         processedImageBytes.value = originalImageBytes.value;
         processedUiImage.value = originalUiImage.value;
       }
+      _saveCurrentStateToActiveSticker();
+      stickers.refresh();
     } else {
       await updateBackgroundRemoval();
     }
@@ -135,6 +211,9 @@ class StickerMakerController extends GetxController {
     backgroundSensitivity.value = value;
     if (isBackgroundRemoved.value) {
       await updateBackgroundRemoval();
+    } else {
+      _saveCurrentStateToActiveSticker();
+      stickers.refresh();
     }
   }
 
@@ -163,6 +242,8 @@ class StickerMakerController extends GetxController {
         final uiImg = await _bytesToUiImage(resultBytes);
         processedUiImage.value = uiImg;
         processedImageBytes.value = resultBytes;
+        _saveCurrentStateToActiveSticker();
+        stickers.refresh();
       }
     } catch (e) {
       Get.snackbar(
@@ -188,6 +269,8 @@ class StickerMakerController extends GetxController {
     _cachedMaskWidth = null;
     _cachedMaskHeight = null;
     _currentImagePath = null;
+    activeSticker.reset();
+    stickers.refresh();
   }
 
   static Future<Uint8List?> _applyMaskToImage(_MaskProcessingParam param) async {
@@ -267,11 +350,15 @@ class StickerMakerController extends GetxController {
   void undoLastStroke() {
     if (strokes.isNotEmpty) {
       strokes.removeLast();
+      activeSticker.strokes = List.from(strokes);
+      stickers.refresh();
     }
   }
 
   void clearStrokes() {
     strokes.clear();
+    activeSticker.strokes.clear();
+    stickers.refresh();
   }
 
   // Text Layer Operations
@@ -286,6 +373,8 @@ class StickerMakerController extends GetxController {
     selectedTextLayerId.value = newLayer.id;
     activeTool.value = StickerToolMode.text;
     brushMode.value = CanvasBrushMode.none;
+    activeSticker.textLayers = List.from(textLayers);
+    stickers.refresh();
   }
 
   void updateSelectedText(String text) {
@@ -293,6 +382,8 @@ class StickerMakerController extends GetxController {
     if (layer != null) {
       layer.text = text;
       textLayers.refresh();
+      activeSticker.textLayers = List.from(textLayers);
+      stickers.refresh();
     }
   }
 
@@ -301,6 +392,8 @@ class StickerMakerController extends GetxController {
     if (layer != null) {
       layer.color = color;
       textLayers.refresh();
+      activeSticker.textLayers = List.from(textLayers);
+      stickers.refresh();
     }
   }
 
@@ -309,6 +402,8 @@ class StickerMakerController extends GetxController {
     if (layer != null) {
       layer.strokeColor = color;
       textLayers.refresh();
+      activeSticker.textLayers = List.from(textLayers);
+      stickers.refresh();
     }
   }
 
@@ -317,6 +412,8 @@ class StickerMakerController extends GetxController {
     if (layer != null) {
       layer.strokeWidth = width;
       textLayers.refresh();
+      activeSticker.textLayers = List.from(textLayers);
+      stickers.refresh();
     }
   }
 
@@ -325,6 +422,8 @@ class StickerMakerController extends GetxController {
     if (layer != null) {
       layer.fontFamily = fontFamily;
       textLayers.refresh();
+      activeSticker.textLayers = List.from(textLayers);
+      stickers.refresh();
     }
   }
 
@@ -332,6 +431,8 @@ class StickerMakerController extends GetxController {
     if (selectedTextLayerId.value != null) {
       textLayers.removeWhere((l) => l.id == selectedTextLayerId.value);
       selectedTextLayerId.value = null;
+      activeSticker.textLayers = List.from(textLayers);
+      stickers.refresh();
     }
   }
 
@@ -371,6 +472,8 @@ class StickerMakerController extends GetxController {
     if (_draggedTextLayer != null) {
       _draggedTextLayer!.position += delta;
       textLayers.refresh();
+      activeSticker.textLayers = List.from(textLayers);
+      stickers.refresh();
     } else if (currentStroke.value != null) {
       currentStroke.value!.points.add(localPosition);
       currentStroke.refresh();
@@ -382,6 +485,8 @@ class StickerMakerController extends GetxController {
     if (currentStroke.value != null) {
       strokes.add(currentStroke.value!);
       currentStroke.value = null;
+      activeSticker.strokes = List.from(strokes);
+      stickers.refresh();
     }
   }
 
@@ -404,12 +509,145 @@ class StickerMakerController extends GetxController {
     }
   }
 
+  Future<Uint8List> _renderStickerToWebp(StickerItem item) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+
+    canvas.scale(512 / 320, 512 / 320);
+
+    final painter = StickerCanvasPainter(
+      originalImage: item.originalUiImage,
+      processedImage: item.processedUiImage,
+      strokes: item.strokes,
+      textLayers: item.textLayers,
+      brushSize: 0,
+      brushMode: CanvasBrushMode.none,
+      isExporting: true,
+    );
+
+    painter.paint(canvas, const Size(320, 320));
+
+    final picture = recorder.endRecording();
+    final ui.Image image = await picture.toImage(512, 512);
+    final ByteData? byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
+
+    if (byteData == null) {
+      throw Exception('Gagal mengonversi stiker ke data PNG.');
+    }
+
+    final Uint8List pngBytes = byteData.buffer.asUint8List();
+
+    final img.Image? decoded = img.decodePng(pngBytes);
+    if (decoded == null) {
+      throw Exception('Gagal memproses gambar PNG stiker.');
+    }
+
+    img.Image sticker512;
+    if (decoded.width == 512 && decoded.height == 512) {
+      sticker512 = decoded;
+    } else {
+      sticker512 = img.Image(width: 512, height: 512, numChannels: 4);
+
+      int targetWidth = 512;
+      int targetHeight = 512;
+      if (decoded.width > decoded.height) {
+        targetHeight = (decoded.height * 512 / decoded.width).round();
+      } else if (decoded.height > decoded.width) {
+        targetWidth = (decoded.width * 512 / decoded.height).round();
+      }
+
+      final resized = img.copyResize(
+        decoded,
+        width: targetWidth,
+        height: targetHeight,
+      );
+      final offsetX = (512 - targetWidth) ~/ 2;
+      final offsetY = (512 - targetHeight) ~/ 2;
+      img.compositeImage(sticker512, resized, dstX: offsetX, dstY: offsetY);
+    }
+
+    final Uint8List cleanPngBytes =
+        Uint8List.fromList(img.encodePng(sticker512));
+
+    int quality = 80;
+    Uint8List? webpBytes = await FlutterImageCompress.compressWithList(
+      cleanPngBytes,
+      format: CompressFormat.webp,
+      quality: quality,
+      minWidth: 512,
+      minHeight: 512,
+    );
+
+    while (webpBytes != null &&
+        webpBytes.lengthInBytes > 95 * 1024 &&
+        quality > 20) {
+      quality -= 10;
+      webpBytes = await FlutterImageCompress.compressWithList(
+        cleanPngBytes,
+        format: CompressFormat.webp,
+        quality: quality,
+        minWidth: 512,
+        minHeight: 512,
+      );
+    }
+
+    if (webpBytes == null || webpBytes.lengthInBytes > 100 * 1024) {
+      throw Exception(
+        'Ukuran file WebP melebihi batas 100 KB (${((webpBytes?.lengthInBytes ?? 0) / 1024).toStringAsFixed(1)} KB).',
+      );
+    }
+
+    return webpBytes;
+  }
+
+  Future<Uint8List> _renderStickerToTrayPng(StickerItem item) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+
+    canvas.scale(512 / 320, 512 / 320);
+
+    final painter = StickerCanvasPainter(
+      originalImage: item.originalUiImage,
+      processedImage: item.processedUiImage,
+      strokes: item.strokes,
+      textLayers: item.textLayers,
+      brushSize: 0,
+      brushMode: CanvasBrushMode.none,
+      isExporting: true,
+    );
+
+    painter.paint(canvas, const Size(320, 320));
+
+    final picture = recorder.endRecording();
+    final ui.Image image = await picture.toImage(512, 512);
+    final ByteData? byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      throw Exception('Gagal mengonversi icon tray.');
+    }
+
+    final Uint8List pngBytes = byteData.buffer.asUint8List();
+    final img.Image? decoded = img.decodePng(pngBytes);
+    if (decoded == null) {
+      throw Exception('Gagal memproses PNG icon tray.');
+    }
+
+    final img.Image trayImage = img.copyResize(decoded, width: 96, height: 96);
+    return Uint8List.fromList(img.encodePng(trayImage, level: 9));
+  }
+
   Future<void> exportAndSendToWhatsApp() async {
-    if (processedImageBytes.value == null) {
+    _saveCurrentStateToActiveSticker();
+
+    final filledCount = stickers.where((s) => s.hasImage).length;
+    if (filledCount < 3) {
       Get.snackbar(
-        'Peringatan',
-        'Silakan pilih gambar terlebih dahulu sebelum mengekspor.',
+        'Stiker Belum Lengkap',
+        'WhatsApp memerlukan minimal 3 gambar stiker dalam satu paket. Saat ini baru $filledCount/3 stiker.',
         snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade900,
+        colorText: Colors.white,
       );
       return;
     }
@@ -418,114 +656,12 @@ class StickerMakerController extends GetxController {
       isLoading.value = true;
       isExporting.value = true;
 
-      // 1. Give Flutter a moment to rebuild canvas without controls & checkerboard
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      final boundary = canvasGlobalKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) {
-        throw Exception('RenderRepaintBoundary tidak ditemukan pada kanvas.');
-      }
-
-      // Render RepaintBoundary into 512x512 resolution (pixelRatio = 512 / 320 = 1.6)
-      final ui.Image image = await boundary.toImage(pixelRatio: 512 / 320);
-      final ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        throw Exception('Gagal mengonversi kanvas menjadi data PNG.');
-      }
-
-      final Uint8List pngBytes = byteData.buffer.asUint8List();
-
-      // 2. Format Canvas using `image` package to guarantee exact 512x512 with transparent padding
-      final img.Image? decoded = img.decodePng(pngBytes);
-      if (decoded == null) {
-        throw Exception('Gagal memproses gambar PNG kanvas.');
-      }
-
-      img.Image sticker512;
-      if (decoded.width == 512 && decoded.height == 512) {
-        sticker512 = decoded;
-      } else {
-        sticker512 = img.Image(width: 512, height: 512, numChannels: 4);
-
-        int targetWidth = 512;
-        int targetHeight = 512;
-        if (decoded.width > decoded.height) {
-          targetHeight = (decoded.height * 512 / decoded.width).round();
-        } else if (decoded.height > decoded.width) {
-          targetWidth = (decoded.width * 512 / decoded.height).round();
-        }
-
-        final resized = img.copyResize(
-          decoded,
-          width: targetWidth,
-          height: targetHeight,
-        );
-        final offsetX = (512 - targetWidth) ~/ 2;
-        final offsetY = (512 - targetHeight) ~/ 2;
-        img.compositeImage(sticker512, resized, dstX: offsetX, dstY: offsetY);
-      }
-
-      final Uint8List cleanPngBytes =
-          Uint8List.fromList(img.encodePng(sticker512));
-
-      // 3. Encode WebP using FlutterImageCompress (uses Android system libwebp for WhatsApp C++ compatibility)
-      int quality = 80;
-      Uint8List? webpBytes = await FlutterImageCompress.compressWithList(
-        cleanPngBytes,
-        format: CompressFormat.webp,
-        quality: quality,
-        minWidth: 512,
-        minHeight: 512,
-      );
-
-      while (webpBytes != null &&
-          webpBytes.lengthInBytes > 95 * 1024 &&
-          quality > 20) {
-        quality -= 10;
-        webpBytes = await FlutterImageCompress.compressWithList(
-          cleanPngBytes,
-          format: CompressFormat.webp,
-          quality: quality,
-          minWidth: 512,
-          minHeight: 512,
-        );
-      }
-
-      if (webpBytes == null || webpBytes.lengthInBytes > 100 * 1024) {
-        throw Exception(
-          'Ukuran file WebP melebihi batas 100 KB (${((webpBytes?.lengthInBytes ?? 0) / 1024).toStringAsFixed(1)} KB).',
-        );
-      }
-
-      // 4. Create Tray Icon PNG (96x96 pixels, < 50 KB, PNG format required by WhatsApp)
-      final img.Image trayImage =
-          img.copyResize(sticker512, width: 96, height: 96);
-      final Uint8List trayPngBytes =
-          Uint8List.fromList(img.encodePng(trayImage, level: 9));
-
-      debugPrint(
-        'Tray Icon PNG: ${trayImage.width}x${trayImage.height}, size: ${trayPngBytes.lengthInBytes} bytes',
-      );
-      debugPrint(
-        'Sticker WebP: ${sticker512.width}x${sticker512.height}, size: ${webpBytes.lengthInBytes} bytes',
-      );
-
-      if (trayPngBytes.lengthInBytes > 50 * 1024) {
-        throw Exception(
-          'Ukuran file tray icon (${(trayPngBytes.lengthInBytes / 1024).toStringAsFixed(1)} KB) melebihi batas 50 KB.',
-        );
-      }
-
-      // 5. Get Android filesDir path via MethodChannel
       final String? filesDirPath =
           await _whatsappChannel.invokeMethod<String>('getFilesDir');
       if (filesDirPath == null) {
         throw Exception('Gagal mendapatkan direktori file aplikasi.');
       }
 
-      // Delete all existing subfolders in '$filesDirPath/sticker_packs' so provider only returns one pack
       final stickerPacksParentDir = Directory('$filesDirPath/sticker_packs');
       if (await stickerPacksParentDir.exists()) {
         await for (final entity in stickerPacksParentDir.list()) {
@@ -535,7 +671,6 @@ class StickerMakerController extends GetxController {
         }
       }
 
-      // Generate unique clean packId to bypass WhatsApp error cache
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final packId = 'pack_$timestamp';
       final packName = 'Stiker Saya ${timestamp % 1000}';
@@ -546,26 +681,23 @@ class StickerMakerController extends GetxController {
       }
       await packDir.create(recursive: true);
 
-      // Write config.txt (Line 1: pack name, Line 2: author, Line 3: animated, Line 4: version)
       final configFile = File('${packDir.path}/config.txt');
       await configFile.writeAsString(
         '$packName\nRio Sticker Maker\n0\n1',
       );
 
-      // Write tray.png
+      // Render tray icon from sticker 0
+      final Uint8List trayPngBytes = await _renderStickerToTrayPng(stickers[0]);
       final trayFile = File('${packDir.path}/tray.png');
       await trayFile.writeAsBytes(trayPngBytes);
 
-      // Write 3 sticker files (0.webp, 1.webp, 2.webp)
-      final sticker0 = File('${packDir.path}/0.webp');
-      final sticker1 = File('${packDir.path}/1.webp');
-      final sticker2 = File('${packDir.path}/2.webp');
+      // Render 3 WebP stickers
+      for (int i = 0; i < 3; i++) {
+        final webpBytes = await _renderStickerToWebp(stickers[i]);
+        final stickerFile = File('${packDir.path}/$i.webp');
+        await stickerFile.writeAsBytes(webpBytes);
+      }
 
-      await sticker0.writeAsBytes(webpBytes);
-      await sticker1.writeAsBytes(webpBytes);
-      await sticker2.writeAsBytes(webpBytes);
-
-      // 6. Invoke addStickerPack intent on Android
       await _whatsappChannel.invokeMethod('addStickerPack', {
         'identifier': packId,
         'name': packName,
@@ -573,7 +705,7 @@ class StickerMakerController extends GetxController {
 
       Get.snackbar(
         'Sukses',
-        'Stiker berhasil diekspor dan dikirim ke WhatsApp!',
+        '3 Stiker berhasil diekspor dan dikirim ke WhatsApp!',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green.shade700,
         colorText: Colors.white,
