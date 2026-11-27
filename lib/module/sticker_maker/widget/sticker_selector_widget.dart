@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/sticker_maker_controller.dart';
-import '../data/model/brush_stroke.dart';
-import 'sticker_canvas_widget.dart';
+import 'package:whatsappstickermaker/common/theme/app_theme.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/controller/sticker_maker_controller.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/brush_stroke.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/widget/sticker_canvas_widget.dart';
 
 class StickerSelectorWidget extends StatelessWidget {
   final StickerMakerController controller;
@@ -14,25 +16,29 @@ class StickerSelectorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Obx(() {
       final selectedIndex = controller.selectedIndex.value;
       final stickers = controller.stickers;
       final filledCount = stickers.where((s) => s.hasImage).length;
+      final isComplete = filledCount == 3;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Daftar Stiker Paket',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    letterSpacing: -0.3,
+                    color: isDark ? AppTheme.darkLabel : AppTheme.label,
                   ),
                 ),
                 Container(
@@ -41,31 +47,41 @@ class StickerSelectorWidget extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: filledCount == 3
-                        ? Colors.green.shade100
-                        : Colors.orange.shade100,
-                    borderRadius: BorderRadius.circular(12),
+                    color: isComplete
+                        ? AppTheme.systemGreen.withOpacity(0.15)
+                        : AppTheme.systemOrange.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(100),
                   ),
                   child: Text(
                     '$filledCount/3 Selesai',
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: filledCount == 3
-                          ? Colors.green.shade800
-                          : Colors.orange.shade900,
+                      fontWeight: FontWeight.w600,
+                      color: isComplete
+                          ? AppTheme.systemGreen
+                          : AppTheme.systemOrange,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(3, (index) {
               final isSelected = selectedIndex == index;
               final item = stickers[index];
+
+              final cardBg = isSelected
+                  ? AppTheme.primary.withOpacity(0.08)
+                  : (isDark
+                      ? AppTheme.darkSecondarySystemGroupedBackground
+                      : AppTheme.secondarySystemGroupedBackground);
+
+              final borderColor = isSelected
+                  ? AppTheme.primary
+                  : (isDark ? const Color(0x38FFFFFF) : const Color(0x1F000000));
 
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6.0),
@@ -82,31 +98,27 @@ class StickerSelectorWidget extends StatelessWidget {
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 95,
-                    height: 115,
+                    width: 98,
+                    height: 118,
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.deepPurple.shade50
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected
-                            ? Colors.deepPurple
-                            : Colors.grey.shade300,
-                        width: isSelected ? 2.5 : 1.5,
+                        color: borderColor,
+                        width: isSelected ? 2.0 : 0.8,
                       ),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: Colors.deepPurple.withAlpha(40),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                                color: AppTheme.primary.withOpacity(0.2),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               )
                             ]
                           : [
                               BoxShadow(
-                                color: Colors.black.withAlpha(10),
-                                blurRadius: 4,
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 6,
                                 offset: const Offset(0, 2),
                               )
                             ],
@@ -115,7 +127,7 @@ class StickerSelectorWidget extends StatelessWidget {
                       children: [
                         Positioned.fill(
                           child: Padding(
-                            padding: const EdgeInsets.all(6.0),
+                            padding: const EdgeInsets.all(8.0),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -123,11 +135,13 @@ class StickerSelectorWidget extends StatelessWidget {
                                   Expanded(
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                        color: isDark
+                                            ? const Color(0x1FAFAFEB)
+                                            : const Color(0x0F000000),
                                       ),
                                       child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(10),
                                         child: FittedBox(
                                           fit: BoxFit.contain,
                                           child: SizedBox(
@@ -157,20 +171,24 @@ class StickerSelectorWidget extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: isSelected
-                                          ? FontWeight.bold
+                                          ? FontWeight.w600
                                           : FontWeight.normal,
                                       color: isSelected
-                                          ? Colors.deepPurple
-                                          : Colors.grey.shade700,
+                                          ? AppTheme.primary
+                                          : (isDark
+                                              ? AppTheme.darkSecondaryLabel
+                                              : AppTheme.secondaryLabel),
                                     ),
                                   ),
                                 ] else ...[
                                   Icon(
-                                    Icons.add_photo_alternate_outlined,
+                                    CupertinoIcons.plus_circle_fill,
                                     size: 32,
                                     color: isSelected
-                                        ? Colors.deepPurple
-                                        : Colors.grey.shade400,
+                                        ? AppTheme.primary
+                                        : (isDark
+                                            ? Colors.white38
+                                            : Colors.black26),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
@@ -179,11 +197,13 @@ class StickerSelectorWidget extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: isSelected
-                                          ? FontWeight.bold
+                                          ? FontWeight.w600
                                           : FontWeight.normal,
                                       color: isSelected
-                                          ? Colors.deepPurple
-                                          : Colors.grey.shade600,
+                                          ? AppTheme.primary
+                                          : (isDark
+                                              ? AppTheme.darkSecondaryLabel
+                                              : AppTheme.secondaryLabel),
                                     ),
                                   ),
                                 ],
@@ -193,16 +213,16 @@ class StickerSelectorWidget extends StatelessWidget {
                         ),
                         if (isSelected)
                           Positioned(
-                            top: 4,
-                            left: 4,
+                            top: 6,
+                            left: 6,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.deepPurple,
-                                borderRadius: BorderRadius.circular(8),
+                                color: AppTheme.primary,
+                                borderRadius: BorderRadius.circular(100),
                               ),
                               child: const Text(
                                 'Aktif',
@@ -216,22 +236,14 @@ class StickerSelectorWidget extends StatelessWidget {
                           ),
                         if (item.hasImage)
                           Positioned(
-                            top: 2,
-                            right: 2,
-                            child: InkWell(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
                               onTap: () => controller.clearStickerSlot(index),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade600,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  size: 12,
-                                  color: Colors.white,
-                                ),
+                              child: const Icon(
+                                CupertinoIcons.xmark_circle_fill,
+                                size: 18,
+                                color: AppTheme.systemRed,
                               ),
                             ),
                           ),

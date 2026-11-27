@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'brush_stroke.dart';
-import 'text_layer.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/brush_stroke.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/text_layer.dart';
 
 class StickerItem {
   Uint8List? originalImageBytes;

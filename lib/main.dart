@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'module/sticker_maker/binding/sticker_maker_binding.dart';
-import 'module/sticker_maker/screen/sticker_maker_screen.dart';
+import 'package:whatsappstickermaker/common/theme/app_theme.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/binding/sticker_maker_binding.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/screen/sticker_maker_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,10 +16,9 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'WhatsApp Sticker Maker',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       initialBinding: StickerMakerBinding(),
       home: const StickerMakerScreen(),
     );

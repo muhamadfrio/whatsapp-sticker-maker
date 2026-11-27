@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:google_mlkit_selfie_segmentation/google_mlkit_selfie_segmentation.dart';
 import 'package:image_picker/image_picker.dart';
-import '../controller/sticker_maker_controller.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/controller/sticker_maker_controller.dart';
 
 class StickerMakerBinding extends Bindings {
   @override

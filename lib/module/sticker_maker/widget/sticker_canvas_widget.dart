@@ -1,10 +1,12 @@
 import 'dart:ui' as ui;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../controller/sticker_maker_controller.dart';
-import '../data/model/brush_stroke.dart';
-import '../data/model/text_layer.dart';
+import 'package:whatsappstickermaker/common/theme/app_theme.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/controller/sticker_maker_controller.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/brush_stroke.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/text_layer.dart';
 
 class StickerCanvasWidget extends StatelessWidget {
   final StickerMakerController controller;
@@ -16,6 +18,8 @@ class StickerCanvasWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Obx(() {
       final processedBytes = controller.processedImageBytes.value;
       final processedUiImg = controller.processedUiImage.value;
@@ -24,19 +28,42 @@ class StickerCanvasWidget extends StatelessWidget {
           width: 300,
           height: 300,
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade400, width: 1.5),
+            color: isDark
+                ? AppTheme.darkSecondarySystemGroupedBackground
+                : AppTheme.secondarySystemGroupedBackground,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? const Color(0x38FFFFFF) : const Color(0x1F000000),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: const Column(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add_photo_alternate_outlined, size: 64, color: Colors.grey),
-              SizedBox(height: 12),
-              Text(
-                'Belum ada gambar.\nPilih gambar dari galeri untuk mulai membuat stiker.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+              Icon(
+                CupertinoIcons.photo_on_rectangle,
+                size: 56,
+                color: isDark ? AppTheme.darkSecondaryLabel : AppTheme.secondaryLabel,
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'Belum ada gambar.\nPilih gambar dari galeri untuk mulai membuat stiker.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark ? AppTheme.darkSecondaryLabel : AppTheme.secondaryLabel,
+                    fontSize: 13,
+                    letterSpacing: -0.2,
+                  ),
+                ),
               ),
             ],
           ),
@@ -51,13 +78,23 @@ class StickerCanvasWidget extends StatelessWidget {
           decoration: controller.isExporting.value
               ? null
               : BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.deepPurple.shade300, width: 2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppTheme.primary,
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withOpacity(0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
           child: ClipRRect(
             borderRadius: controller.isExporting.value
                 ? BorderRadius.zero
-                : BorderRadius.circular(14),
+                : BorderRadius.circular(18),
             child: GestureDetector(
               onPanStart: (details) {
                 controller.handlePanStart(details.localPosition);
@@ -305,7 +342,7 @@ class StickerCanvasPainter extends CustomPainter {
         fillPainter.height + 12,
       );
       final borderPaint = Paint()
-        ..color = Colors.deepPurple
+        ..color = AppTheme.primary
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0;
       canvas.drawRect(textRect, borderPaint);

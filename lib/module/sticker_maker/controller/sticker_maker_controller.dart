@@ -9,10 +9,10 @@ import 'package:google_mlkit_selfie_segmentation/google_mlkit_selfie_segmentatio
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
-import '../data/model/brush_stroke.dart';
-import '../data/model/sticker_item.dart';
-import '../data/model/text_layer.dart';
-import '../widget/sticker_canvas_widget.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/brush_stroke.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/sticker_item.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/data/model/text_layer.dart';
+import 'package:whatsappstickermaker/module/sticker_maker/widget/sticker_canvas_widget.dart';
 
 enum StickerToolMode { none, erase, restore, text, background }
 
@@ -69,7 +69,7 @@ class StickerMakerController extends GetxController {
   TextLayer? _draggedTextLayer;
 
   // Font and Color Constants
-  final List<String> fontOptions = const ['Poppins', 'Bebas Neue', 'Pacifico'];
+  final List<String> fontOptions = const ['Inter', 'Poppins', 'Bebas Neue', 'Pacifico'];
   final List<Color> colorOptions = const [
     Colors.white,
     Colors.black,

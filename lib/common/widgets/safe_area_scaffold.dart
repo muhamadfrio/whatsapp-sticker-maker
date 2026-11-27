@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:whatsappstickermaker/common/theme/app_theme.dart';
 
 class SafeAreaScaffold extends StatelessWidget {
   final PreferredSizeWidget? appBar;
@@ -18,9 +19,14 @@ class SafeAreaScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultBg = isDark
+        ? AppTheme.darkSystemGroupedBackground
+        : AppTheme.systemGroupedBackground;
+
     return Scaffold(
       appBar: appBar,
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? defaultBg,
       body: SafeArea(
         child: body,
       ),
